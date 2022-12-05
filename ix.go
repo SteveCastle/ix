@@ -1,9 +1,11 @@
-package main
+package ix
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 func findStore(path string) string {
@@ -28,26 +30,53 @@ func InitIndex() {
 	}
 }
 
-func Tag(tag, file string) {
+func Tag(category, tag, filePath string) {
 	store := findStore("./")
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println("Creating tag assignment at:", store+"ix/"+tag+"/"+file)
-	CreateTag(tag)
-	err = os.Link(path.Join(pwd, file), path.Join(store+"ix/"+tag, file))
+	files := []string{}
+	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		fmt.Println(err)
-		return
+	}
+
+	if fileInfo.IsDir() {
+		err := filepath.Walk(filePath,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if !info.IsDir() {
+					files = append(files, path)
+				}
+				return nil
+			})
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		files = append(files, filePath)
+	}
+	for _, f := range files {
+		basePath := path.Base(f)
+		fmt.Println("Creating tag assignment at:", store+"ix/"+tag+"/"+f)
+		CreateTag(category, tag)
+		dir := fmt.Sprintf("%s/ix/%s/%s", store, category, tag)
+		err = os.Link(path.Join(pwd, f), path.Join(dir, basePath))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 }
 
-func CreateTag(tag string) {
+func CreateTag(category, tag string) {
 	store := findStore("./")
-	path := store + "ix/" + tag
-	fmt.Println("Creating tag at:", path)
+	path := fmt.Sprintf("%s/ix/%s/%s", store, category, tag)
+	fmt.Println("creating tag with category:", category, "tag:", tag)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := os.MkdirAll(path, 0755)
 		if err != nil {
@@ -80,30 +109,4 @@ func CrossIndex(parent, child string) {
 
 func Rebuild() {
 	fmt.Println("Rebuilt index.")
-}
-
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("IX v0.01")
-		return
-	}
-	args := os.Args[1:]
-	cmd := args[0]
-
-	switch cmd {
-	case "init":
-		InitIndex()
-	case "create":
-		CreateTag(args[1])
-	case "tag":
-		Tag(args[1], args[2])
-	case "cross":
-		CrossIndex(args[1], args[2])
-	case "store":
-		findStore("./")
-	case "build":
-		Rebuild()
-	default:
-		fmt.Println("Not a valid command.")
-	}
 }
