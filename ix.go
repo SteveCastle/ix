@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 func FindStore(path string) string {
@@ -30,13 +31,37 @@ func InitIndex() {
 	}
 }
 
+// Returns the part of the input string after the final slash character.
+// If there is no slash character in the input string, returns the empty string.
+func afterLastSlash(input string) string {
+	// Find the index of the final slash character.
+	// If there is no slash character in the input string,
+	// strings.LastIndex returns -1.
+	lastSlashIndex := strings.LastIndex(input, "\\")
+
+	if lastSlashIndex == -1 {
+		// There is no slash character in the input string.
+		// Return the empty string.
+		return ""
+	}
+
+	// Return the part of the input string after the final slash character.
+	return input[lastSlashIndex+1:]
+}
+
 func Tag(category, tag, filePath string) {
 	store := FindStore("./")
 	pwd, err := os.Getwd()
+	tagDirectory := fmt.Sprintf("%s/%s/%s", store, category, tag)
+	// If tag directory does not exist, then create it.
+	if _, err := os.Stat(tagDirectory); os.IsNotExist(err) {
+		CreateTag(category, tag)
+	}
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+
 	files := []string{}
 	fileInfo, err := os.Stat(path.Join(pwd, filePath))
 	if err != nil {
@@ -61,16 +86,15 @@ func Tag(category, tag, filePath string) {
 		files = append(files, filePath)
 	}
 	for _, f := range files {
-		basePath := path.Base(f)
-		CreateTag(category, tag)
-		dir := fmt.Sprintf("%s/%s/%s", store, category, tag)
-		tagPath := path.Join(dir, basePath)
+		fileName := afterLastSlash(f)
+		//Console log the file name
+		fmt.Println("F NAME:", f)
+		tagPath := path.Join(tagDirectory, fileName)
 		filePath := path.Join(pwd, f)
 		fmt.Fprintf(os.Stdout, "Tagging %s with %s/%s\n", filePath, category, tag)
 		err = os.Link(filePath, tagPath)
 		if err != nil {
-			fmt.Println(err)
-			return
+			fmt.Println("Could not create link: ", err)
 		}
 	}
 }
