@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-func findStore(path string) string {
+func FindStore(path string) string {
 	files, err := os.ReadDir(path)
 	if err != nil {
 		fmt.Println(err)
@@ -16,10 +16,10 @@ func findStore(path string) string {
 	}
 	for _, f := range files {
 		if f.Type().IsDir() && f.Name() == "ix" {
-			return path
+			return path + "ix"
 		}
 	}
-	return findStore("../" + path)
+	return FindStore("../" + path)
 }
 
 func InitIndex() {
@@ -31,16 +31,16 @@ func InitIndex() {
 }
 
 func Tag(category, tag, filePath string) {
-	store := findStore("./")
+	store := FindStore("./")
 	pwd, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	files := []string{}
-	fileInfo, err := os.Stat(filePath)
+	fileInfo, err := os.Stat(path.Join(pwd, filePath))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error opening file", err)
 	}
 
 	if fileInfo.IsDir() {
@@ -62,10 +62,12 @@ func Tag(category, tag, filePath string) {
 	}
 	for _, f := range files {
 		basePath := path.Base(f)
-		fmt.Println("Creating tag assignment at:", store+"ix/"+tag+"/"+f)
 		CreateTag(category, tag)
-		dir := fmt.Sprintf("%s/ix/%s/%s", store, category, tag)
-		err = os.Link(path.Join(pwd, f), path.Join(dir, basePath))
+		dir := fmt.Sprintf("%s/%s/%s", store, category, tag)
+		tagPath := path.Join(dir, basePath)
+		filePath := path.Join(pwd, f)
+		fmt.Fprintf(os.Stdout, "Tagging %s with %s/%s\n", filePath, category, tag)
+		err = os.Link(filePath, tagPath)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -74,8 +76,8 @@ func Tag(category, tag, filePath string) {
 }
 
 func CreateTag(category, tag string) {
-	store := findStore("./")
-	path := fmt.Sprintf("%s/ix/%s/%s", store, category, tag)
+	store := FindStore("./")
+	path := fmt.Sprintf("%s/%s/%s", store, category, tag)
 	fmt.Println("creating tag with category:", category, "tag:", tag)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := os.MkdirAll(path, 0755)
@@ -85,28 +87,4 @@ func CreateTag(category, tag string) {
 		}
 	}
 
-}
-
-func CrossIndex(parent, child string) {
-	store := findStore("./")
-	parentItems, err := os.ReadDir(store + "ix/" + parent)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	childItems, err := os.ReadDir(store + "ix/" + child)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	for _, p := range parentItems {
-		fmt.Println("Parent Items:", p.Name())
-	}
-	for _, c := range childItems {
-		fmt.Println("Child Items:", c.Name())
-	}
-}
-
-func Rebuild() {
-	fmt.Println("Rebuilt index.")
 }

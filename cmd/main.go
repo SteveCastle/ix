@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/SteveCastle/ix"
@@ -21,18 +22,29 @@ func main() {
 
 	app.Commands = []cli.Command{
 		{
-			Name:    "init",
-			Aliases: []string{"i"},
-			Usage:   "Init creates a new index in the current directory. Commands that run in directories under this index will be able to access the index.",
+			Name:    "store",
+			Aliases: []string{"s"},
+			Usage:   "Store returns the store location that will be used for saving metadata.",
 			Action: func(c *cli.Context) error {
-				ix.InitIndex()
+				fmt.Println(ix.FindStore("./"))
 				return nil
+			},
+			Subcommands: []cli.Command{
+				{
+					Name:    "init",
+					Aliases: []string{"i"},
+					Usage:   "Init creates a new index in the current directory. Commands that run in directories under this index will be able to access the index.",
+					Action: func(c *cli.Context) error {
+						ix.InitIndex()
+						return nil
+					},
+				},
 			},
 		},
 		{
 			Name:      "tag",
 			Aliases:   []string{"t"},
-			Usage:     "tag a file with a category and name",
+			Usage:     "Tag a file with a category and name. If a directory is specified, all files in the directory will be tagged.",
 			ArgsUsage: "<category> <name> <file>",
 			Subcommands: []cli.Command{
 				{
