@@ -7,7 +7,11 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/segmentio/ksuid"
 )
+
+var fileTypes = []string{".jpg", ".jpeg", ".gif", ".png", ".mp4"}
 
 func FindStore(path string) string {
 	files, err := os.ReadDir(path)
@@ -41,12 +45,22 @@ func afterLastSlash(input string) string {
 
 	if lastSlashIndex == -1 {
 		// There is no slash character in the input string.
-		// Return the empty string.
-		return ""
+		// Return the entire input string.
+		return input
 	}
 
 	// Return the part of the input string after the final slash character.
 	return input[lastSlashIndex+1:]
+}
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }
 
 func Tag(category, tag, filePath string) {
@@ -74,7 +88,8 @@ func Tag(category, tag, filePath string) {
 				if err != nil {
 					return err
 				}
-				if !info.IsDir() {
+				ext := filepath.Ext(path)
+				if !info.IsDir() && contains(fileTypes, ext) {
 					files = append(files, path)
 				}
 				return nil
@@ -87,9 +102,10 @@ func Tag(category, tag, filePath string) {
 	}
 	for _, f := range files {
 		fileName := afterLastSlash(f)
-		//Console log the file name
-		fmt.Println("F NAME:", f)
-		tagPath := path.Join(tagDirectory, fileName)
+		fileBase := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+		fileExt := filepath.Ext(fileName)
+		newFileName := fmt.Sprintf("%s-%s%s", fileBase, ksuid.New(), fileExt)
+		tagPath := path.Join(tagDirectory, newFileName)
 		filePath := path.Join(pwd, f)
 		fmt.Fprintf(os.Stdout, "Tagging %s with %s/%s\n", filePath, category, tag)
 		err = os.Link(filePath, tagPath)
