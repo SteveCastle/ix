@@ -1,6 +1,7 @@
 package ix
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,26 +14,57 @@ import (
 
 var fileTypes = []string{".jpg", ".jpeg", ".gif", ".png", ".mp4"}
 
-func FindStore(path string) string {
-	files, err := os.ReadDir(path)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	for _, f := range files {
-		if f.Type().IsDir() && f.Name() == "ix" {
-			return path + "ix"
-		}
-	}
-	return FindStore("../" + path)
+type Config struct {
+	Store string
 }
 
-func InitIndex() {
-	err := os.Mkdir("ix/", 0755)
-	if err != nil {
-		fmt.Println(err)
-		return
+func saveConfig(file string, config *Config) error {
+	if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+		return err
 	}
+	f, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return json.NewEncoder(f).Encode(config)
+}
+
+func loadConfig(file string) (*Config, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var config Config
+	if err := json.NewDecoder(f).Decode(&config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func FindStore(path string) string {
+	pathVolume := filepath.VolumeName(path)
+	var storePath string
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if pathVolume == filepath.VolumeName(homeDir) {
+		storePath = homeDir + "/.ix"
+	} else {
+		storePath = pathVolume + "/.ix"
+	}
+	config, err := loadConfig(homeDir + "/.ix/config.json")
+	if err != nil {
+		defaultConfig := &Config{Store: storePath}
+		saveConfig(storePath+"/config.json", defaultConfig)
+		return defaultConfig.Store
+	}
+	return config.Store
 }
 
 // Returns the part of the input string after the final slash character.
@@ -63,27 +95,26 @@ func contains(s []string, str string) bool {
 	return false
 }
 
-func Tag(category, tag, filePath string) {
-	store := FindStore("./")
-	pwd, err := os.Getwd()
+func Tag(category, tag, inputPath string) {
+	absolutePath, err := filepath.Abs(inputPath)
+	if err != nil {
+		fmt.Println("Error getting absolute path", err)
+	}
+	store := FindStore(absolutePath)
 	tagDirectory := fmt.Sprintf("%s/%s/%s", store, category, tag)
 	// If tag directory does not exist, then create it.
 	if _, err := os.Stat(tagDirectory); os.IsNotExist(err) {
 		CreateTag(category, tag)
 	}
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 
 	files := []string{}
-	fileInfo, err := os.Stat(path.Join(pwd, filePath))
+	fileInfo, err := os.Stat(absolutePath)
 	if err != nil {
 		fmt.Println("Error opening file", err)
 	}
 
 	if fileInfo.IsDir() {
-		err := filepath.Walk(filePath,
+		err := filepath.Walk(absolutePath,
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -98,7 +129,7 @@ func Tag(category, tag, filePath string) {
 			log.Println(err)
 		}
 	} else {
-		files = append(files, filePath)
+		files = append(files, absolutePath)
 	}
 	for _, f := range files {
 		fileName := afterLastSlash(f)
@@ -106,7 +137,7 @@ func Tag(category, tag, filePath string) {
 		fileExt := filepath.Ext(fileName)
 		newFileName := fmt.Sprintf("%s-%s%s", fileBase, ksuid.New(), fileExt)
 		tagPath := path.Join(tagDirectory, newFileName)
-		filePath := path.Join(pwd, f)
+		filePath := f
 		fmt.Fprintf(os.Stdout, "Tagging %s with %s/%s\n", filePath, category, tag)
 		err = os.Link(filePath, tagPath)
 		if err != nil {
