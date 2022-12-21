@@ -104,7 +104,7 @@ func Tag(category, tag, inputPath string) {
 	tagDirectory := fmt.Sprintf("%s/%s/%s", store, category, tag)
 	// If tag directory does not exist, then create it.
 	if _, err := os.Stat(tagDirectory); os.IsNotExist(err) {
-		CreateTag(category, tag)
+		CreateTag(category, tag, absolutePath)
 	}
 
 	files := []string{}
@@ -146,10 +146,10 @@ func Tag(category, tag, inputPath string) {
 	}
 }
 
-func CreateTag(category, tag string) {
-	store := FindStore("./")
+func CreateTag(category, tag string, rootPath string) {
+	store := FindStore(rootPath)
 	path := fmt.Sprintf("%s/%s/%s", store, category, tag)
-	fmt.Println("creating tag with category:", category, "tag:", tag)
+	fmt.Println("creating tag at path:", path)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := os.MkdirAll(path, 0755)
 		if err != nil {

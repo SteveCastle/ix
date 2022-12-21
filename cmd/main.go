@@ -87,7 +87,7 @@ func main() {
 						Action: func(c *cli.Context) error {
 							category := c.Args().Get(0)
 							name := c.Args().Get(1)
-							ix.CreateTag(category, name)
+							ix.CreateTag(category, name, "./")
 							return nil
 						},
 					},
