@@ -58,7 +58,7 @@ func FindStore(path string) string {
 	} else {
 		storePath = pathVolume + "/.ix"
 	}
-	config, err := loadConfig(homeDir + "/.ix/config.json")
+	config, err := loadConfig(storePath + "/config.json")
 	if err != nil {
 		defaultConfig := &Config{Store: storePath}
 		saveConfig(storePath+"/config.json", defaultConfig)
@@ -158,4 +158,35 @@ func CreateTag(category, tag string) {
 		}
 	}
 
+}
+
+func ListCategories() []string {
+	store := FindStore("./")
+	categories := []string{}
+	files, err := os.ReadDir(store)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			categories = append(categories, f.Name())
+		}
+	}
+	return categories
+}
+
+func ListTags(category string) []string {
+	store := FindStore("./")
+	tags := []string{}
+	path := fmt.Sprintf("%s/%s", store, category)
+	files, err := os.ReadDir(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			tags = append(tags, f.Name())
+		}
+	}
+	return tags
 }
