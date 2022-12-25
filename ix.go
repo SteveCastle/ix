@@ -12,6 +12,8 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
+const storeDir = "/ix"
+
 var fileTypes = []string{".jpg", ".jpeg", ".gif", ".png", ".mp4"}
 
 type Config struct {
@@ -54,9 +56,9 @@ func FindStore(path string) string {
 		log.Fatal(err)
 	}
 	if pathVolume == filepath.VolumeName(homeDir) {
-		storePath = homeDir + "/.ix"
+		storePath = homeDir + storeDir
 	} else {
-		storePath = pathVolume + "/.ix"
+		storePath = pathVolume + storeDir
 	}
 	config, err := loadConfig(storePath + "/config.json")
 	if err != nil {
